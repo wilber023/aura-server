@@ -199,7 +199,7 @@ router.get('/',
  */
 router.get('/pending', 
   authMiddleware,
-  friendshipController.getPendingRequests.bind(friendshipController)
+  friendshipController.getFriendRequests.bind(friendshipController)
 );
 
 /**

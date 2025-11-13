@@ -23,20 +23,20 @@ class FriendshipController {
   async sendFriendRequest(req, res) {
     try {
       const requesterId = req.user.id;
-      const { addresseeId } = req.body;
+      const { friend_id } = req.body;
 
-      console.log('📤 SendFriendRequest - From:', requesterId, 'To:', addresseeId);
+      console.log('📤 SendFriendRequest - From:', requesterId, 'To:', friend_id);
 
       // Validar campos requeridos
-      if (!addresseeId) {
+      if (!friend_id) {
         return res.status(400).json({
           success: false,
-          message: 'addresseeId es requerido'
+          message: 'friend_id es requerido'
         });
       }
 
       // No se puede enviar solicitud a sí mismo
-      if (requesterId === addresseeId) {
+      if (requesterId === friend_id) {
         return res.status(400).json({
           success: false,
           message: 'No puedes enviarte una solicitud de amistad a ti mismo'
@@ -44,7 +44,7 @@ class FriendshipController {
       }
 
       // Verificar que el usuario destinatario existe
-      const addresseeUser = await UserProfileModel.findByPk(addresseeId);
+      const addresseeUser = await UserProfileModel.findByPk(friend_id);
       if (!addresseeUser) {
         return res.status(404).json({
           success: false,
@@ -56,8 +56,8 @@ class FriendshipController {
       const existingFriendship = await FriendshipModel.findOne({
         where: {
           [Op.or]: [
-            { requester_id: requesterId, addressee_id: addresseeId },
-            { requester_id: addresseeId, addressee_id: requesterId }
+            { requester_id: requesterId, addressee_id: friend_id },
+            { requester_id: friend_id, addressee_id: requesterId }
           ]
         }
       });
@@ -92,7 +92,7 @@ class FriendshipController {
       const friendship = await FriendshipModel.create({
         id: uuidv4(),
         requester_id: requesterId,
-        addressee_id: addresseeId,
+        addressee_id: friend_id,
         status: 'pending'
       });
 
@@ -506,11 +506,11 @@ class FriendshipController {
   async blockUser(req, res) {
     try {
       const userId = req.user.id;
-      const { userId: targetUserId } = req.body;
+      const { blocked_id } = req.body;
 
-      console.log('🚫 BlockUser - User:', userId, 'Target:', targetUserId);
+      console.log('🚫 BlockUser - User:', userId, 'Target:', blocked_id);
 
-      if (userId === targetUserId) {
+      if (userId === blocked_id) {
         return res.status(400).json({
           success: false,
           message: 'No puedes bloquearte a ti mismo'
@@ -521,8 +521,8 @@ class FriendshipController {
       let friendship = await FriendshipModel.findOne({
         where: {
           [Op.or]: [
-            { requester_id: userId, addressee_id: targetUserId },
-            { requester_id: targetUserId, addressee_id: userId }
+            { requester_id: userId, addressee_id: blocked_id },
+            { requester_id: blocked_id, addressee_id: userId }
           ]
         }
       });
@@ -532,19 +532,19 @@ class FriendshipController {
         await friendship.update({ 
           status: 'blocked',
           requester_id: userId,
-          addressee_id: targetUserId
+          addressee_id: blocked_id
         });
       } else {
         // Crear nuevo registro de bloqueo
         friendship = await FriendshipModel.create({
           id: uuidv4(),
           requester_id: userId,
-          addressee_id: targetUserId,
+          addressee_id: blocked_id,
           status: 'blocked'
         });
       }
 
-      console.log('✅ Usuario bloqueado:', targetUserId);
+      console.log('✅ Usuario bloqueado:', blocked_id);
 
       res.status(200).json({
         success: true,

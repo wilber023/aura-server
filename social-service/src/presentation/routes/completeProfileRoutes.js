@@ -221,6 +221,6 @@ router.delete('/',
  *       404:
  *         description: Perfil completo no encontrado o usuario no existe
  */
-router.get('/:userId', completeProfileController.getCompleteProfileByUserId.bind(completeProfileController));
+router.get('/:userId', completeProfileController.getUserCompleteProfile.bind(completeProfileController));
 
 module.exports = router;
