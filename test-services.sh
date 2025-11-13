@@ -1,0 +1,103 @@
+#!/bin/bash
+
+echo "🔧 Testing Auth Service and Social Service Configuration"
+echo "======================================================="
+
+# Auth Service Test
+echo "1. Testing Auth Service - Public Users Directory"
+echo "================================================="
+
+echo "📋 Available endpoints:"
+echo "  - POST /api/auth/login (for authentication)"  
+echo "  - GET  /api/auth/users/public (new public directory)"
+echo ""
+echo "📝 Example login request:"
+echo "curl -X POST http://54.146.237.63:3001/api/auth/login \\"
+echo "  -H 'Content-Type: application/json' \\"
+echo "  -d '{\"email\":\"aura@gmail.com\",\"password\":\"@Aura1234\"}'"
+echo ""
+echo "📝 Example public users request (replace YOUR_TOKEN):"
+echo "curl -X GET http://54.146.237.63:3001/api/auth/users/public \\"
+echo "  -H 'Authorization: Bearer YOUR_TOKEN_HERE'"
+echo ""
+
+# Social Service Test
+echo "2. Testing Social Service - Publications with Images"
+echo "===================================================="
+
+echo "📋 Available endpoints:"
+echo "  - POST /api/v1/publications (create with text and images)"
+echo "  - GET  /api/v1/publications (list all publications)"
+echo "  - GET  /uploads/publications/filename (access uploaded images)"
+echo ""
+echo "📝 Example create publication with text:"
+echo "curl -X POST http://54.146.237.63:3002/api/v1/publications \\"
+echo "  -H 'Authorization: Bearer YOUR_TOKEN_HERE' \\"
+echo "  -H 'Content-Type: application/json' \\"
+echo "  -d '{\"content\":\"Test publication with text\",\"type\":\"text\",\"visibility\":\"public\"}'"
+echo ""
+echo "📝 Example create publication with image:"
+echo "curl -X POST http://54.146.237.63:3002/api/v1/publications \\"
+echo "  -H 'Authorization: Bearer YOUR_TOKEN_HERE' \\"
+echo "  -F 'content=Test publication with image' \\"
+echo "  -F 'type=text_image' \\"
+echo "  -F 'visibility=public' \\"
+echo "  -F 'files=@/path/to/your/image.jpg'"
+echo ""
+
+echo "3. Installation Commands"
+echo "========================"
+
+echo "📦 For Social Service (install multer if not present):"
+echo "cd ~/aura_server/social-service"
+echo "npm install multer"
+echo ""
+
+echo "🔄 Restart services:"
+echo "pm2 restart auth-service"
+echo "pm2 restart social-service"
+echo ""
+
+echo "4. Verification Steps"
+echo "==================="
+
+echo "✅ Auth Service Checklist:"
+echo "  - Login works and returns JWT token"
+echo "  - /users/public returns user list (without passwords)"
+echo "  - Endpoint requires authentication but not admin role"
+echo ""
+
+echo "✅ Social Service Checklist:"
+echo "  - Text publications save with correct content"
+echo "  - Image uploads work and generate URLs"
+echo "  - Images are accessible via /uploads/publications/filename"
+echo "  - Publications show content and metadata with image URLs"
+echo "  - Flutter app shows content correctly (no 'comentario sin contenido')"
+echo ""
+
+echo "5. Troubleshooting"
+echo "=================="
+
+echo "🚨 Common issues:"
+echo "  - 'multer not found': Run 'npm install multer' in social-service"
+echo "  - 'uploads directory not found': Check permissions and directory structure"
+echo "  - 'req.body is empty': Check middleware order in SocialServiceApp.js"
+echo "  - '401 Unauthorized': Use fresh JWT token from /login endpoint"
+echo ""
+
+echo "📁 Directory structure should be:"
+echo "~/aura_server/social-service/uploads/publications/"
+echo ""
+
+echo "🔍 Check logs:"
+echo "pm2 logs auth-service --lines 50"
+echo "pm2 logs social-service --lines 50"
+echo ""
+
+echo "✅ Setup Complete!"
+echo "==================="
+echo "Both services are now configured for:"
+echo "  - Auth Service: Public user directory (/users/public)"
+echo "  - Social Service: Publications with image uploads"
+echo ""
+echo "Ready for testing with your Flutter app!"
