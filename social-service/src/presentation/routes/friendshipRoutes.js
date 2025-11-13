@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../../infrastructure/middleware/authMiddleware');
+const { authMiddleware } = require('../../infrastructure/middleware/authMiddleware');
 const validationMiddleware = require('../../infrastructure/middleware/validationMiddleware');
 
 // Importar directamente el controlador
