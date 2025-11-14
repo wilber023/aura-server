@@ -98,26 +98,17 @@ class FriendshipController {
 
       console.log('✅ Solicitud de amistad enviada:', friendship.id);
 
-      // Obtener la solicitud con información de usuarios
-      const friendshipWithUsers = await FriendshipModel.findByPk(friendship.id, {
-        include: [
-          {
-            model: UserProfileModel,
-            as: 'requester',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          },
-          {
-            model: UserProfileModel,
-            as: 'addressee',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          }
-        ]
-      });
-
+      // Retornar la solicitud sin información de usuarios por ahora
       res.status(201).json({
         success: true,
         message: 'Solicitud de amistad enviada exitosamente',
-        data: friendshipWithUsers
+        data: {
+          id: friendship.id,
+          requester_id: friendship.requester_id,
+          addressee_id: friendship.addressee_id,
+          status: friendship.status,
+          created_at: friendship.created_at
+        }
       });
 
     } catch (error) {
@@ -164,26 +155,20 @@ class FriendshipController {
 
       console.log('✅ Solicitud de amistad aceptada:', friendshipId);
 
-      // Obtener la amistad con información de usuarios
-      const acceptedFriendship = await FriendshipModel.findByPk(friendshipId, {
-        include: [
-          {
-            model: UserProfileModel,
-            as: 'requester',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          },
-          {
-            model: UserProfileModel,
-            as: 'addressee',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          }
-        ]
-      });
+      // Obtener la amistad actualizada
+      const acceptedFriendship = await FriendshipModel.findByPk(friendshipId);
 
       res.status(200).json({
         success: true,
         message: 'Solicitud de amistad aceptada exitosamente',
-        data: acceptedFriendship
+        data: {
+          id: acceptedFriendship.id,
+          requester_id: acceptedFriendship.requester_id,
+          addressee_id: acceptedFriendship.addressee_id,
+          status: acceptedFriendship.status,
+          created_at: acceptedFriendship.created_at,
+          updated_at: acceptedFriendship.updated_at
+        }
       });
 
     } catch (error) {
@@ -265,18 +250,19 @@ class FriendshipController {
 
       const friendRequests = await FriendshipModel.findAll({
         where: whereCondition,
-        include: [
-          {
-            model: UserProfileModel,
-            as: 'requester',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          },
-          {
-            model: UserProfileModel,
-            as: 'addressee',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          }
-        ],
+        // include comentado temporalmente hasta que se agreguen las columnas faltantes a user_profiles
+        // include: [
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'requester',
+        //     attributes: ['user_id', 'display_name', 'username', 'avatar_url']
+        //   },
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'addressee',
+        //     attributes: ['user_id', 'display_name', 'username', 'avatar_url']
+        //   }
+        // ],
         order: [['created_at', 'DESC']]
       });
 
@@ -310,32 +296,33 @@ class FriendshipController {
             { addressee_id: userId }
           ]
         },
-        include: [
-          {
-            model: UserProfileModel,
-            as: 'requester',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          },
-          {
-            model: UserProfileModel,
-            as: 'addressee',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          }
-        ],
+        // include comentado temporalmente hasta que se agreguen las columnas faltantes a user_profiles
+        // include: [
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'requester',
+        //     attributes: ['user_id', 'display_name', 'username', 'avatar_url']
+        //   },
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'addressee',
+        //     attributes: ['user_id', 'display_name', 'username', 'avatar_url']
+        //   }
+        // ],
         order: [['created_at', 'DESC']],
         limit: parseInt(limit),
         offset: parseInt(offset)
       });
 
-      // Mapear para obtener la información del amigo (no del usuario actual)
+      // Mapear para obtener la información básica de la amistad (sin datos de usuarios por ahora)
       const friends = rows.map(friendship => {
-        const friend = friendship.requester_id === userId 
-          ? friendship.addressee 
-          : friendship.requester;
+        const friend_id = friendship.requester_id === userId 
+          ? friendship.addressee_id 
+          : friendship.requester_id;
         
         return {
           friendship_id: friendship.id,
-          friend,
+          friend_id: friend_id,
           since: friendship.created_at
         };
       });
@@ -384,19 +371,20 @@ class FriendshipController {
             { requester_id: userId, addressee_id: targetUserId },
             { requester_id: targetUserId, addressee_id: userId }
           ]
-        },
-        include: [
-          {
-            model: UserProfileModel,
-            as: 'requester',
-            attributes: ['user_id', 'display_name', 'username']
-          },
-          {
-            model: UserProfileModel,
-            as: 'addressee',
-            attributes: ['user_id', 'display_name', 'username']
-          }
-        ]
+        }
+        // include comentado temporalmente hasta que se agreguen las columnas faltantes a user_profiles
+        // include: [
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'requester',
+        //     attributes: ['user_id', 'display_name', 'username']
+        //   },
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'addressee',
+        //     attributes: ['user_id', 'display_name', 'username']
+        //   }
+        // ]
       });
 
       if (!friendship) {
@@ -610,13 +598,14 @@ class FriendshipController {
           requester_id: userId,
           status: 'blocked'
         },
-        include: [
-          {
-            model: UserProfileModel,
-            as: 'addressee',
-            attributes: ['user_id', 'display_name', 'username', 'avatar_url']
-          }
-        ],
+        // include comentado temporalmente hasta que se agreguen las columnas faltantes a user_profiles
+        // include: [
+        //   {
+        //     model: UserProfileModel,
+        //     as: 'addressee',
+        //     attributes: ['user_id', 'display_name', 'username', 'avatar_url']
+        //   }
+        // ],
         order: [['created_at', 'DESC']]
       });
 
