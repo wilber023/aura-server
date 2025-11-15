@@ -26,7 +26,6 @@ async function runMigration() {
     console.log("🔍 Verificando estructura de tabla...");
     const table = await queryInterface.describeTable('user_profiles');
 
-    // Función para agregar columnas de forma segura
     const addColumnSafe = async (column, options) => {
       if (!table[column]) {
         await queryInterface.addColumn('user_profiles', column, options);
@@ -36,46 +35,69 @@ async function runMigration() {
       }
     };
 
-    // display_name
     await addColumnSafe('display_name', {
       type: Sequelize.STRING(100),
       allowNull: true
     });
 
-    // username
     await addColumnSafe('username', {
       type: Sequelize.STRING(50),
       allowNull: true
     });
 
-    // avatar_url
     await addColumnSafe('avatar_url', {
       type: Sequelize.TEXT,
       allowNull: true
     });
 
-    // bio - biografía con límite de 500 caracteres
+    await addColumnSafe('cover_url', {
+      type: Sequelize.TEXT,
+      allowNull: true,
+      comment: "URL de imagen de portada"
+    });
+
+    await addColumnSafe('location', {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      comment: "Ubicación del usuario"
+    });
+
+    await addColumnSafe('website', {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      comment: "Sitio web del usuario"
+    });
+
     await addColumnSafe('bio', {
       type: Sequelize.STRING(500),
       allowNull: true,
       comment: "Biografía del usuario - máximo 500 caracteres"
     });
 
-    // birth_date - fecha de nacimiento
     await addColumnSafe('birth_date', {
       type: Sequelize.DATEONLY,
       allowNull: true,
       comment: "Fecha de nacimiento en formato YYYY-MM-DD"
     });
 
-    // gender - género con valores específicos
     await addColumnSafe('gender', {
-      type: Sequelize.ENUM('male', 'female', 'other', 'prefer_not_to_say'),
+      type: Sequelize.STRING(50),
       allowNull: true,
       comment: "Género del usuario"
     });
 
-    // followers_count - contador de seguidores
+    await addColumnSafe('privacy_settings', {
+      type: Sequelize.JSON,
+      allowNull: true,
+      comment: "Configuración de privacidad del usuario"
+    });
+
+    await addColumnSafe('preferences', {
+      type: Sequelize.JSON,
+      allowNull: true,
+      comment: "Preferencias del usuario"
+    });
+
     await addColumnSafe('followers_count', {
       type: Sequelize.INTEGER,
       allowNull: false,
@@ -83,7 +105,6 @@ async function runMigration() {
       comment: "Número de seguidores"
     });
 
-    // following_count - contador de seguidos
     await addColumnSafe('following_count', {
       type: Sequelize.INTEGER,
       allowNull: false,
@@ -91,7 +112,6 @@ async function runMigration() {
       comment: "Número de usuarios seguidos"
     });
 
-    // posts_count - contador de publicaciones
     await addColumnSafe('posts_count', {
       type: Sequelize.INTEGER,
       allowNull: false,
@@ -99,7 +119,6 @@ async function runMigration() {
       comment: "Número de publicaciones"
     });
 
-    // is_verified - cuenta verificada
     await addColumnSafe('is_verified', {
       type: Sequelize.BOOLEAN,
       allowNull: false,
@@ -107,12 +126,17 @@ async function runMigration() {
       comment: "Cuenta verificada"
     });
 
-    // is_active - cuenta activa
     await addColumnSafe('is_active', {
       type: Sequelize.BOOLEAN,
       allowNull: false,
       defaultValue: true,
       comment: "Cuenta activa"
+    });
+
+    await addColumnSafe('last_active_at', {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: "Última actividad del usuario"
     });
 
     await db.close();

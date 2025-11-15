@@ -248,7 +248,51 @@ class UserProfileController {
       this._handleError(res, error);
     }
   }
-
+async getProfileByUserId(req, res, next) {
+  try {
+    const { userId } = req.params;
+    
+    console.log(`📋 GetProfileByUserId - User: ${userId}`);
+    
+    const profile = await this.userProfileRepository.findByUserId(userId);
+    
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Perfil no encontrado'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Perfil obtenido exitosamente',
+      data: {
+        profile: {
+          userId: profile.user_id,
+          displayName: profile.display_name,
+          bio: profile.bio,
+          avatarUrl: profile.avatar_url,
+          coverUrl: profile.cover_url,
+          location: profile.location,
+          website: profile.website,
+          birthDate: profile.birth_date,
+          gender: profile.gender,
+          followersCount: profile.followers_count,
+          followingCount: profile.following_count,
+          postsCount: profile.posts_count,
+          isVerified: profile.is_verified,
+          isActive: profile.is_active,
+          lastActiveAt: profile.last_active_at,
+          createdAt: profile.created_at,
+          updatedAt: profile.updated_at
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error en getProfileByUserId:', error.message);
+    next(error);
+  }
+}
   /**
    * Remover amigo - NUEVA FUNCIONALIDAD
    * DELETE /api/v1/users/:userId/friends/:friendId
