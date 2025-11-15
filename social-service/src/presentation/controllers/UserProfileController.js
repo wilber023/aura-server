@@ -65,23 +65,23 @@ class UserProfileController {
 
     // ✅ PROCESAMIENTO DEL AVATAR
     let avatarUrl = req.avatarUrl || avatar || null;
-
-    // Si hay archivo subido, procesarlo con Cloudinary
-    if (req.file) {
-      try {
-        console.log('📤 Subiendo avatar a Cloudinary...');
-        
-        // Leer el archivo desde disco
-        const fs = require('fs');
-        const fileBuffer = fs.readFileSync(req.file.path);
-        
-        // Subir a Cloudinary
-        const uploadResult = await this.cloudinaryService.uploadProfileAvatar(
-          fileBuffer,
-          userId
-        );
-        
-        avatarUrl = uploadResult.url;
+ // Si hay archivo subido, procesarlo con Cloudinary
+if (req.file) {
+  try {
+    console.log('📤 Subiendo avatar a Cloudinary...');
+    
+    // ✅ REEMPLAZA CON ESTE CÓDIGO - usa el path directamente y el método 'upload'
+    const uploadResult = await this.cloudinaryService.upload(req.file.path, {
+      folder: 'profiles/avatars',
+      public_id: `profile-${userId}-${Date.now()}`,
+      transformation: [
+        { width: 200, height: 200, crop: 'fill' },
+        { quality: 'auto' },
+        { format: 'jpg' }
+      ]
+    });
+    
+    avatarUrl = uploadResult.secureUrl;
         console.log('✅ Avatar subido a Cloudinary:', avatarUrl);
         
         // Eliminar archivo temporal del disco
