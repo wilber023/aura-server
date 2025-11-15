@@ -31,9 +31,8 @@ class CreateUserProfileUseCase {
         throw new Error('displayName es requerido');
       }
 
-      if (!avatarUrl) {
-        throw new Error('avatarUrl es requerido (debe venir del upload)');
-      }
+      // avatarUrl is optional for JSON fallback (can be null)
+      const finalAvatarUrl = avatarUrl || null;
 
       // 2. Importar modelo directamente si no hay repository
       const { UserProfileModel } = require('../../../infrastructure/database/models');
@@ -53,7 +52,7 @@ class CreateUserProfileUseCase {
         user_id: userId,
         display_name: displayName,
         bio: bio || null,
-        avatar_url: avatarUrl,
+  avatar_url: finalAvatarUrl,
         birth_date: birthDate || null,
         gender: gender || null,
         // Campos con valores por defecto según especificación

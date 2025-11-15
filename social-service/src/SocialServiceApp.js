@@ -173,6 +173,13 @@ class SocialServiceApp {
     // POST /api/v1/profiles/blocked-users (Bloquear un usuario desde la cuenta del token)
     profileRouter.post('/blocked-users', authMiddleware, controllers.userProfileController.blockUser.bind(controllers.userProfileController));
     
+    // Importar validaciones para fallback JSON
+    const { validateProfileData } = require('./infrastructure/middleware/profileValidationMiddleware');
+    
+    // POST /api/v1/profiles/json - Fallback para clientes que envíen application/json
+    // Aplica validaciones de perfil (displayName, bio, birthDate, gender)
+    profileRouter.post('/json', authMiddleware, ...validateProfileData, controllers.userProfileController.createProfile.bind(controllers.userProfileController));
+    
     this.app.use('/api/v1/profiles', profileRouter);
 
     // Importar y usar las nuevas rutas
