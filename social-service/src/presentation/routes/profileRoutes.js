@@ -12,18 +12,13 @@ const {
 // Controller
 const UserProfileController = require('../controllers/UserProfileController');
 
-// Importar casos de uso - En un proyecto real estos vendrían del contenedor IoC
+// Importar caso de uso que funciona
 const CreateUserProfileUseCase = require('../../application/use-cases/userProfile/CreateUserProfileUseCase');
-const UpdateProfileUseCase = require('../../application/use-cases/userProfile/UpdateProfileUseCase');
 
-// Instanciar casos de uso (simplificado para implementación rápida)
-const createUserProfileUseCase = new CreateUserProfileUseCase();
-const updateProfileUseCase = new UpdateProfileUseCase();
-
-// Instanciar controlador
+// Instanciar controlador con dependencias mínimas
 const userProfileController = new UserProfileController(
-  createUserProfileUseCase,
-  updateProfileUseCase,
+  new CreateUserProfileUseCase(), // createUserProfileUseCase 
+  null, // updateProfileUseCase - no usado por ahora
   null, // updateInterestsUseCase
   null, // addFriendUseCase
   null, // removeFriendUseCase
