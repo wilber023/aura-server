@@ -1,3 +1,6 @@
+// ✅ AÑADE ESTO AL PRINCIPIO DEL ARCHIVO
+const fs = require('fs');
+
 class UserProfileController {
   constructor(
     createUserProfileUseCase,
@@ -65,26 +68,27 @@ class UserProfileController {
 
     // ✅ PROCESAMIENTO DEL AVATAR
     let avatarUrl = req.avatarUrl || avatar || null;
- // Si hay archivo subido, procesarlo con Cloudinary
-if (req.file) {
-  try {
-    console.log('📤 Subiendo avatar a Cloudinary...');
-    
-   // ✅ SOLUCIÓN - Pasar el objeto file completo
-const uploadResult = await this.cloudinaryService.upload(req.file, {
-  folder: 'profiles/avatars',
-  public_id: `profile-${userId}-${Date.now()}`,
-  transformation: [
-    { width: 200, height: 200, crop: 'fill' },
-    { quality: 'auto' },
-    { format: 'jpg' }
-  ]
-});
-    
-    avatarUrl = uploadResult.secureUrl;
+
+    // Si hay archivo subido, procesarlo con Cloudinary
+    if (req.file) {
+      try {
+        console.log('📤 Subiendo avatar a Cloudinary...');
+        
+        // ✅ SOLUCIÓN - Pasar el objeto file completo
+        const uploadResult = await this.cloudinaryService.upload(req.file, {
+          folder: 'profiles/avatars',
+          public_id: `profile-${userId}-${Date.now()}`,
+          transformation: [
+            { width: 200, height: 200, crop: 'fill' },
+            { quality: 'auto' },
+            { format: 'jpg' }
+          ]
+        });
+        
+        avatarUrl = uploadResult.secureUrl;
         console.log('✅ Avatar subido a Cloudinary:', avatarUrl);
         
-        // Eliminar archivo temporal del disco
+        // ✅ CORREGIDO - fs ya está importado al principio
         fs.unlinkSync(req.file.path);
         console.log('🗑️ Archivo temporal eliminado');
         
@@ -92,7 +96,7 @@ const uploadResult = await this.cloudinaryService.upload(req.file, {
         console.error('❌ Error subiendo avatar a Cloudinary:', uploadError);
         // Si falla la subida, limpiar el archivo temporal
         try {
-          const fs = require('fs');
+          // ✅ CORREGIDO - Ya no necesitas require aquí
           if (req.file && req.file.path) {
             fs.unlinkSync(req.file.path);
           }
