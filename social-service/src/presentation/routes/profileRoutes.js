@@ -9,7 +9,7 @@ const {
   validateProfileData 
 } = require('../../infrastructure/middleware/profileValidationMiddleware');
 
-// Controller
+// Controlle r
 const UserProfileController = require('../controllers/UserProfileController');
 
 // Importar caso de uso que funciona
