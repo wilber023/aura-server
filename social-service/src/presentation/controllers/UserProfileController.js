@@ -70,16 +70,16 @@ if (req.file) {
   try {
     console.log('📤 Subiendo avatar a Cloudinary...');
     
-    // ✅ REEMPLAZA CON ESTE CÓDIGO - usa el path directamente y el método 'upload'
-    const uploadResult = await this.cloudinaryService.upload(req.file.path, {
-      folder: 'profiles/avatars',
-      public_id: `profile-${userId}-${Date.now()}`,
-      transformation: [
-        { width: 200, height: 200, crop: 'fill' },
-        { quality: 'auto' },
-        { format: 'jpg' }
-      ]
-    });
+   // ✅ SOLUCIÓN - Pasar el objeto file completo
+const uploadResult = await this.cloudinaryService.upload(req.file, {
+  folder: 'profiles/avatars',
+  public_id: `profile-${userId}-${Date.now()}`,
+  transformation: [
+    { width: 200, height: 200, crop: 'fill' },
+    { quality: 'auto' },
+    { format: 'jpg' }
+  ]
+});
     
     avatarUrl = uploadResult.secureUrl;
         console.log('✅ Avatar subido a Cloudinary:', avatarUrl);
