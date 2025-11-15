@@ -40,7 +40,7 @@ const register = async (req, res) => {
         
         // Generar un token JWT para el nuevo usuario
         const token = jwt.sign(
-            { id: newUser.user_id, role: userRole.role_name }, // Usar el nombre del rol obtenido
+            { id: newUser.user_id, email: newUser.email, role: userRole.role_name }, // Usar el nombre del rol obtenido
             process.env.JWT_SECRET,
             { expiresIn: '1h' } // Token expira en 1 hora
         );
@@ -72,7 +72,7 @@ const login = async (req, res) => {
 
         // Generar token JWT
         const token = jwt.sign(
-            { id: user.user_id, role: user.role.role_name },
+            { id: user.user_id, email: user.email, role: user.role.role_name },
             process.env.JWT_SECRET,
             { expiresIn: '1h' } // Token expira en 1 hora
         );
