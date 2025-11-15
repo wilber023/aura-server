@@ -161,13 +161,13 @@ class SocialServiceApp {
     
     this.app.use('/api/v1/publications', publicationRouter);
     
-    // Rutas de User Profiles
+    // Importar y usar rutas de perfiles con upload
+    const profileRoutes = require('./presentation/routes/profileRoutes');
+    this.app.use('/api/v1', profileRoutes);
+    
+    // Rutas adicionales de User Profiles (mantener compatibilidad)
     const profileRouter = express.Router();
     
-    // POST /api/v1/profiles (Crear perfil para el usuario del token)
-    profileRouter.post('/', authMiddleware, controllers.userProfileController.createProfile.bind(controllers.userProfileController));
-    // PUT /api/v1/profiles (Actualizar el perfil del usuario del token)
-    profileRouter.put('/', authMiddleware, controllers.userProfileController.updateProfile.bind(controllers.userProfileController));
     // POST /api/v1/profiles/friends (Agregar un amigo al usuario del token)
     profileRouter.post('/friends', authMiddleware, controllers.userProfileController.addFriend.bind(controllers.userProfileController));
     // POST /api/v1/profiles/blocked-users (Bloquear un usuario desde la cuenta del token)

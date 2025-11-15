@@ -28,71 +28,103 @@ class UserProfileController {
   }
 
   /**
-   * Crear perfil de usuario
+   * Crear perfil de usuario con upload de avatar
    * POST /api/v1/profiles
+   * Content-Type: multipart/form-data
    */
   async createProfile(req, res) {
     try {
-      console.log('📝 CreateProfile - req.body completo:', req.body);
-      
-      const { 
-        userId, 
-        displayName, 
-        username, 
-        email, 
-        fullName, 
-        bio, 
-        interests, 
-        avatarUrl, 
-        location, 
-        website, 
-        birthDate,
-        gender
-      } = req.body;
-      
-      
-      // Usar displayName en prioridad, luego fullName, luego username
-      const finalDisplayName = displayName || fullName || username || email || 'Usuario Anónimo';
-
-      console.log('📝 CreateProfile - Datos procesados:', {
-        finalUserId,
-        finalDisplayName,
-        bio,
-        avatarUrl,
-        location,
-        website,
-        birthDate
+      console.log('📝 CreateProfile - Datos recibidos:', {
+        body: req.body,
+        file: req.file ? { filename: req.file.filename, url: req.file.path } : null,
+        avatarUrl: req.avatarUrl,
+        user: req.user?.id
       });
 
+      // Validar autenticación
       if (!req.user?.id) {
-        return res.status(400).json({
+        return res.status(401).json({
           success: false,
-          message: 'userId es requerido para crear perfil'
+          message: 'Token de acceso requerido'
         });
       }
 
-      const result = await this.createUserProfileUseCase.execute({ // El userId se obtiene del token
-        userId: finalUserId,  // Cambié de 'id' a 'userId'
-        displayName: finalDisplayName,
-        email,
-        username,
-        fullName,
+      const userId = req.user.id;
+      
+      // Los datos ya están validados por los middlewares
+      const { displayName, bio, birthDate, gender } = req.body;
+      const avatarUrl = req.avatarUrl; // Viene del middleware uploadAvatar
+
+      console.log('📝 CreateProfile - Procesando datos:', {
+        userId,
+        displayName,
         bio,
-        interests,
-        avatarUrl,
-        location,
-        website,
-        birthDate
+        birthDate,
+        gender,
+        avatarUrl
       });
+
+      // Verificar que no existe perfil para este usuario
+      const existingProfile = await this.findExistingProfile(userId);
+      if (existingProfile) {
+        return res.status(409).json({
+          success: false,
+          message: 'Ya existe un perfil para este usuario'
+        });
+      }
+
+      // Crear el perfil usando el caso de uso
+      const profileData = {
+        userId,
+        displayName,
+        bio: bio || null,
+        avatarUrl,
+        birthDate: birthDate || null,
+        gender: gender || null
+      };
+
+      const result = await this.createUserProfileUseCase.execute(profileData);
+
+      // Preparar respuesta según especificación
+      const responseData = {
+        id: result.userProfile?.id || result.id,
+        user_id: userId,
+        display_name: displayName,
+        bio: bio || null,
+        avatar_url: avatarUrl,
+        birth_date: birthDate || null,
+        gender: gender || null,
+        followers_count: 0,
+        following_count: 0,
+        posts_count: 0,
+        is_verified: false,
+        is_active: true,
+        created_at: result.userProfile?.created_at || result.createdAt || new Date().toISOString(),
+        updated_at: result.userProfile?.updated_at || result.updatedAt || new Date().toISOString()
+      };
 
       res.status(201).json({
         success: true,
         message: 'Perfil creado exitosamente',
-        data: result.userProfile || result
+        data: responseData
       });
 
     } catch (error) {
       this._handleError(res, error);
+    }
+  }
+
+  /**
+   * Verificar si existe un perfil para el usuario
+   */
+  async findExistingProfile(userId) {
+    try {
+      // Usar directamente el modelo para verificar existencia
+      const { UserProfileModel } = require('../../infrastructure/database/models');
+      return await UserProfileModel.findOne({ where: { user_id: userId } });
+    } catch (error) {
+      console.error('Error verificando perfil existente:', error);
+      return null;
     }
   }
 
