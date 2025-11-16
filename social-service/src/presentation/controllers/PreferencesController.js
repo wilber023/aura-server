@@ -1,5 +1,5 @@
 // presentation/controllers/PreferencesController.js
-const { UserPreference } = require('../../infrastructure/database/models');
+const { UserPreferenceModel } = require('../../infrastructure/database/models');
 const { v4: uuidv4 } = require('uuid');
 
 class PreferencesController {
@@ -9,9 +9,15 @@ class PreferencesController {
     this.updateUserPreferences = this.updateUserPreferences.bind(this);
     this.deleteUserPreferences = this.deleteUserPreferences.bind(this);
     this.getAvailablePreferences = this.getAvailablePreferences.bind(this);
+    
+    // Validar que el modelo se cargó correctamente
+    if (!UserPreferenceModel) {
+      console.error('❌ ERROR CRÍTICO: UserPreferenceModel no está disponible');
+    } else {
+      console.log('✅ UserPreferenceModel cargado correctamente');
+    }
   }
 
-  // ✅ Lista centralizada con tildes correctas
   getValidPreferences() {
     return [
       'Deportes', 'Arte', 'Música', 'Lectura', 'Tecnología', 
@@ -26,7 +32,7 @@ class PreferencesController {
       
       console.log('📋 GetUserPreferences - User:', userId);
 
-      const userPreferences = await UserPreference.findOne({
+      const userPreferences = await UserPreferenceModel.findOne({
         where: { user_id: userId }
       });
 
@@ -98,7 +104,7 @@ class PreferencesController {
         });
       }
 
-      const existingPreferences = await UserPreference.findOne({
+      const existingPreferences = await UserPreferenceModel.findOne({
         where: { user_id: userId }
       });
 
@@ -116,7 +122,7 @@ class PreferencesController {
         });
       }
 
-      const userPreferences = await UserPreference.create({
+      const userPreferences = await UserPreferenceModel.create({
         id: uuidv4(),
         user_id: userId,
         preferences: [...new Set(preferenceNames)]
@@ -181,12 +187,12 @@ class PreferencesController {
         });
       }
 
-      let userPreferences = await UserPreference.findOne({
+      let userPreferences = await UserPreferenceModel.findOne({
         where: { user_id: userId }
       });
 
       if (!userPreferences) {
-        userPreferences = await UserPreference.create({
+        userPreferences = await UserPreferenceModel.create({
           id: uuidv4(),
           user_id: userId,
           preferences: [...new Set(preferenceNames)]
@@ -224,7 +230,7 @@ class PreferencesController {
 
       console.log('🗑️ DeleteUserPreferences - User:', userId);
 
-      const userPreferences = await UserPreference.findOne({
+      const userPreferences = await UserPreferenceModel.findOne({
         where: { user_id: userId }
       });
 
