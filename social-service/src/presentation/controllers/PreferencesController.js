@@ -1,9 +1,9 @@
+// PreferencesController.js (Puerto 3002)
 const { UserPreferenceModel } = require('../../infrastructure/database/models');
 const { v4: uuidv4 } = require('uuid');
 
 class PreferencesController {
   constructor() {
-    // Bind methods para mantener contexto
     this.getUserPreferences = this.getUserPreferences.bind(this);
     this.createUserPreferences = this.createUserPreferences.bind(this);
     this.updateUserPreferences = this.updateUserPreferences.bind(this);
@@ -11,12 +11,9 @@ class PreferencesController {
     this.getAvailablePreferences = this.getAvailablePreferences.bind(this);
   }
 
-  /**
-   * Obtener preferencias de un usuario específico
-   */
   async getUserPreferences(req, res) {
     try {
-      const userId = req.user.id; // Del JWT token
+      const userId = req.user.id;
       
       console.log('📋 GetUserPreferences - User:', userId);
 
@@ -25,7 +22,6 @@ class PreferencesController {
       });
 
       if (!userPreferences) {
-        // Retornar preferencias vacías si no existen
         return res.status(200).json({
           success: true,
           message: 'Preferencias obtenidas exitosamente',
@@ -47,32 +43,58 @@ class PreferencesController {
     }
   }
 
-  /**
-   * Crear preferencias para un usuario
-   */
   async createUserPreferences(req, res) {
     try {
       const userId = req.user.id;
-      const { preferences } = req.body;
+      
+      // ✅ CORRECCIÓN CRÍTICA: El body YA ES el array directamente
+      let preferencesData = req.body;
 
-      console.log('📝 CreateUserPreferences - User:', userId, 'Preferences:', preferences);
+      console.log('📝 CreateUserPreferences - User:', userId);
+      console.log('📝 Type of req.body:', typeof req.body, Array.isArray(req.body));
+      console.log('📝 Raw req.body:', JSON.stringify(req.body));
+      console.log('📝 Preferences Data:', preferencesData);
 
-      // Validar que preferences sea un array
-      if (!Array.isArray(preferences)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Las preferencias deben ser un array'
-        });
+      // Verificar si es un array
+      if (!Array.isArray(preferencesData)) {
+        console.log('❌ No es un array, intentando extraer...');
+        // Si viene como objeto, intentar extraer
+        if (preferencesData && preferencesData.preferences) {
+          preferencesData = preferencesData.preferences;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Las preferencias deben ser un array',
+            received: typeof req.body,
+            body: req.body
+          });
+        }
       }
+
+      console.log('✅ Array de preferencias:', preferencesData);
 
       // Validar preferencias disponibles
       const validPreferences = [
-        'Deportes', 'Arte', 'Musica', 'Lectura', 'Tecnologia', 
-        'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografia', 
-        'Cocina', 'Baile', 'Meditacion'
+        'Deportes', 'Arte', 'Música', 'Lectura', 'Tecnología', 
+        'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografía', 
+        'Cocina', 'Baile', 'Meditación'
       ];
 
-      const invalidPreferences = preferences.filter(pref => !validPreferences.includes(pref));
+      // Extraer nombres de las categorías del array de objetos
+      const preferenceNames = preferencesData.map(pref => {
+        if (typeof pref === 'string') {
+          return pref;
+        } else if (pref && pref.category) {
+          return pref.category;
+        } else if (pref && pref.name) {
+          return pref.name;
+        }
+        return null;
+      }).filter(name => name !== null);
+
+      console.log('📝 Nombres extraídos:', preferenceNames);
+
+      const invalidPreferences = preferenceNames.filter(pref => !validPreferences.includes(pref));
       if (invalidPreferences.length > 0) {
         return res.status(400).json({
           success: false,
@@ -81,15 +103,24 @@ class PreferencesController {
         });
       }
 
-      // Verificar si ya existen preferencias para el usuario
+      // Verificar si ya existen preferencias
       const existingPreferences = await UserPreferenceModel.findOne({
         where: { user_id: userId }
       });
 
       if (existingPreferences) {
-        return res.status(400).json({
-          success: false,
-          message: 'El usuario ya tiene preferencias configuradas. Use PUT para actualizar.'
+        // Si ya existen, actualizar
+        console.log('📝 Preferencias ya existen, actualizando...');
+        await existingPreferences.update({
+          preferences: [...new Set(preferenceNames)]
+        });
+
+        console.log('✅ Preferencias actualizadas exitosamente:', userId);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Preferencias actualizadas exitosamente',
+          data: existingPreferences
         });
       }
 
@@ -97,7 +128,7 @@ class PreferencesController {
       const userPreferences = await UserPreferenceModel.create({
         id: uuidv4(),
         user_id: userId,
-        preferences: [...new Set(preferences)] // Eliminar duplicados
+        preferences: [...new Set(preferenceNames)]
       });
 
       console.log('✅ Preferencias creadas exitosamente:', userId);
@@ -113,32 +144,56 @@ class PreferencesController {
     }
   }
 
-  /**
-   * Actualizar preferencias de un usuario
-   */
   async updateUserPreferences(req, res) {
     try {
       const userId = req.user.id;
-      const { preferences } = req.body;
+      
+      // ✅ CORRECCIÓN CRÍTICA: El body YA ES el array directamente
+      let preferencesData = req.body;
 
-      console.log('✏️ UpdateUserPreferences - User:', userId, 'New Preferences:', preferences);
+      console.log('✏️ UpdateUserPreferences - User:', userId);
+      console.log('✏️ Type of req.body:', typeof req.body, Array.isArray(req.body));
+      console.log('✏️ Raw req.body:', JSON.stringify(req.body));
+      console.log('✏️ New Preferences:', preferencesData);
 
-      // Validar que preferences sea un array
-      if (!Array.isArray(preferences)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Las preferencias deben ser un array'
-        });
+      // Verificar si es un array
+      if (!Array.isArray(preferencesData)) {
+        console.log('❌ No es un array, intentando extraer...');
+        if (preferencesData && preferencesData.preferences) {
+          preferencesData = preferencesData.preferences;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Las preferencias deben ser un array',
+            received: typeof req.body,
+            body: req.body
+          });
+        }
       }
 
-      // Validar preferencias disponibles
+      console.log('✅ Array de preferencias:', preferencesData);
+
       const validPreferences = [
-        'Deportes', 'Arte', 'Musica', 'Lectura', 'Tecnologia', 
-        'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografia', 
-        'Cocina', 'Baile', 'Meditacion'
+        'Deportes', 'Arte', 'Música', 'Lectura', 'Tecnología', 
+        'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografía', 
+        'Cocina', 'Baile', 'Meditación'
       ];
 
-      const invalidPreferences = preferences.filter(pref => !validPreferences.includes(pref));
+      // Extraer nombres de las categorías
+      const preferenceNames = preferencesData.map(pref => {
+        if (typeof pref === 'string') {
+          return pref;
+        } else if (pref && pref.category) {
+          return pref.category;
+        } else if (pref && pref.name) {
+          return pref.name;
+        }
+        return null;
+      }).filter(name => name !== null);
+
+      console.log('📝 Nombres extraídos:', preferenceNames);
+
+      const invalidPreferences = preferenceNames.filter(pref => !validPreferences.includes(pref));
       if (invalidPreferences.length > 0) {
         return res.status(400).json({
           success: false,
@@ -147,7 +202,6 @@ class PreferencesController {
         });
       }
 
-      // Buscar preferencias existentes
       let userPreferences = await UserPreferenceModel.findOne({
         where: { user_id: userId }
       });
@@ -157,7 +211,7 @@ class PreferencesController {
         userPreferences = await UserPreferenceModel.create({
           id: uuidv4(),
           user_id: userId,
-          preferences: [...new Set(preferences)]
+          preferences: [...new Set(preferenceNames)]
         });
 
         console.log('✅ Preferencias creadas (no existían previamente):', userId);
@@ -171,7 +225,7 @@ class PreferencesController {
 
       // Actualizar preferencias existentes
       await userPreferences.update({
-        preferences: [...new Set(preferences)]
+        preferences: [...new Set(preferenceNames)]
       });
 
       console.log('✅ Preferencias actualizadas exitosamente:', userId);
@@ -187,9 +241,6 @@ class PreferencesController {
     }
   }
 
-  /**
-   * Eliminar preferencias de un usuario
-   */
   async deleteUserPreferences(req, res) {
     try {
       const userId = req.user.id;
@@ -207,7 +258,6 @@ class PreferencesController {
         });
       }
 
-      // Eliminar preferencias
       await userPreferences.destroy();
 
       console.log('✅ Preferencias eliminadas exitosamente:', userId);
@@ -222,71 +272,80 @@ class PreferencesController {
     }
   }
 
-  /**
-   * Obtener lista de preferencias disponibles
-   */
   async getAvailablePreferences(req, res) {
     try {
       const availablePreferences = [
         {
           key: 'Deportes',
           name: 'Deportes',
-          description: 'Actividades físicas y deportivas'
+          description: 'Actividades físicas y deportivas',
+          icono: '⚽'
         },
         {
           key: 'Arte',
           name: 'Arte',
-          description: 'Pintura, escultura, arte visual'
+          description: 'Pintura, escultura, arte visual',
+          icono: '🎨'
         },
         {
-          key: 'Musica',
+          key: 'Música',
           name: 'Música',
-          description: 'Instrumentos, géneros musicales, conciertos'
+          description: 'Instrumentos, géneros musicales, conciertos',
+          icono: '🎵'
         },
         {
           key: 'Lectura',
           name: 'Lectura',
-          description: 'Libros, literatura, escritura'
+          description: 'Libros, literatura, escritura',
+          icono: '📚'
         },
         {
-          key: 'Tecnologia',
+          key: 'Tecnología',
           name: 'Tecnología',
-          description: 'Programación, gadgets, innovación'
+          description: 'Programación, gadgets, innovación',
+          icono: '💻'
         },
         {
           key: 'Naturaleza',
           name: 'Naturaleza',
-          description: 'Senderismo, ecología, vida al aire libre'
+          description: 'Senderismo, ecología, vida al aire libre',
+          icono: '🌿'
         },
         {
           key: 'Voluntariado',
           name: 'Voluntariado',
-          description: 'Ayuda social, causas benéficas'
+          description: 'Ayuda social, causas benéficas',
+          icono: '🤝'
         },
         {
           key: 'Gaming',
           name: 'Gaming',
-          description: 'Videojuegos, esports, streaming'
+          description: 'Videojuegos, esports, streaming',
+          icono: '🎮'
         },
         {
-          key: 'Fotografia',
+          key: 'Fotografía',
           name: 'Fotografía',
-          description: 'Fotografía, edición, arte visual'
+          description: 'Fotografía, edición, arte visual',
+          icono: '📷'
         },
         {
           key: 'Cocina',
           name: 'Cocina',
-          description: 'Recetas, gastronomía, repostería'
+          description: 'Recetas, gastronomía, repostería',
+          icono: '🍳'
         },
         {
           key: 'Baile',
           name: 'Baile',
-          description: 'Danza, coreografía, ritmo'
+          description: 'Danza, coreografía, ritmo',
+          icono: '💃'
         },
         {
-          key: 'Meditacion',
+          key: 'Meditación',
           name: 'Meditación',
-          description: 'Mindfulness, yoga, bienestar mental'
+          description: 'Mindfulness, yoga, bienestar mental',
+          icono: '🧘'
         }
       ];
 
@@ -301,11 +360,9 @@ class PreferencesController {
     }
   }
 
-  /**
-   * Manejo centralizado de errores HTTP
-   */
   _handleError(res, error) {
-    console.error('Error en PreferencesController:', error.message);
+    console.error('❌ Error en PreferencesController:', error.message);
+    console.error('Stack:', error.stack);
     
     if (error.name === 'SequelizeValidationError') {
       return res.status(400).json({
