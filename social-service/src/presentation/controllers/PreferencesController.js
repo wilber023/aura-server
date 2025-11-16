@@ -1,5 +1,5 @@
-// PreferencesController.js (Puerto 3002)
-const { UserPreferenceModel } = require('../../infrastructure/database/models');
+// presentation/controllers/PreferencesController.js
+const { UserPreference } = require('../../infrastructure/database/models');
 const { v4: uuidv4 } = require('uuid');
 
 class PreferencesController {
@@ -11,13 +11,22 @@ class PreferencesController {
     this.getAvailablePreferences = this.getAvailablePreferences.bind(this);
   }
 
+  // ✅ Lista centralizada con tildes correctas
+  getValidPreferences() {
+    return [
+      'Deportes', 'Arte', 'Música', 'Lectura', 'Tecnología', 
+      'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografía', 
+      'Cocina', 'Baile', 'Meditación'
+    ];
+  }
+
   async getUserPreferences(req, res) {
     try {
       const userId = req.user.id;
       
       console.log('📋 GetUserPreferences - User:', userId);
 
-      const userPreferences = await UserPreferenceModel.findOne({
+      const userPreferences = await UserPreference.findOne({
         where: { user_id: userId }
       });
 
@@ -46,41 +55,23 @@ class PreferencesController {
   async createUserPreferences(req, res) {
     try {
       const userId = req.user.id;
-      
-      // ✅ CORRECCIÓN CRÍTICA: El body YA ES el array directamente
       let preferencesData = req.body;
 
       console.log('📝 CreateUserPreferences - User:', userId);
       console.log('📝 Type of req.body:', typeof req.body, Array.isArray(req.body));
       console.log('📝 Raw req.body:', JSON.stringify(req.body));
-      console.log('📝 Preferences Data:', preferencesData);
 
-      // Verificar si es un array
       if (!Array.isArray(preferencesData)) {
-        console.log('❌ No es un array, intentando extraer...');
-        // Si viene como objeto, intentar extraer
         if (preferencesData && preferencesData.preferences) {
           preferencesData = preferencesData.preferences;
         } else {
           return res.status(400).json({
             success: false,
-            message: 'Las preferencias deben ser un array',
-            received: typeof req.body,
-            body: req.body
+            message: 'Las preferencias deben ser un array'
           });
         }
       }
 
-      console.log('✅ Array de preferencias:', preferencesData);
-
-      // Validar preferencias disponibles
-      const validPreferences = [
-        'Deportes', 'Arte', 'Música', 'Lectura', 'Tecnología', 
-        'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografía', 
-        'Cocina', 'Baile', 'Meditación'
-      ];
-
-      // Extraer nombres de las categorías del array de objetos
       const preferenceNames = preferencesData.map(pref => {
         if (typeof pref === 'string') {
           return pref;
@@ -94,8 +85,12 @@ class PreferencesController {
 
       console.log('📝 Nombres extraídos:', preferenceNames);
 
+      const validPreferences = this.getValidPreferences();
       const invalidPreferences = preferenceNames.filter(pref => !validPreferences.includes(pref));
+      
       if (invalidPreferences.length > 0) {
+        console.log('❌ Preferencias inválidas encontradas:', invalidPreferences);
+        console.log('✅ Preferencias válidas:', validPreferences);
         return res.status(400).json({
           success: false,
           message: `Preferencias inválidas: ${invalidPreferences.join(', ')}`,
@@ -103,14 +98,11 @@ class PreferencesController {
         });
       }
 
-      // Verificar si ya existen preferencias
-      const existingPreferences = await UserPreferenceModel.findOne({
+      const existingPreferences = await UserPreference.findOne({
         where: { user_id: userId }
       });
 
       if (existingPreferences) {
-        // Si ya existen, actualizar
-        console.log('📝 Preferencias ya existen, actualizando...');
         await existingPreferences.update({
           preferences: [...new Set(preferenceNames)]
         });
@@ -124,8 +116,7 @@ class PreferencesController {
         });
       }
 
-      // Crear nuevas preferencias
-      const userPreferences = await UserPreferenceModel.create({
+      const userPreferences = await UserPreference.create({
         id: uuidv4(),
         user_id: userId,
         preferences: [...new Set(preferenceNames)]
@@ -147,39 +138,23 @@ class PreferencesController {
   async updateUserPreferences(req, res) {
     try {
       const userId = req.user.id;
-      
-      // ✅ CORRECCIÓN CRÍTICA: El body YA ES el array directamente
       let preferencesData = req.body;
 
       console.log('✏️ UpdateUserPreferences - User:', userId);
       console.log('✏️ Type of req.body:', typeof req.body, Array.isArray(req.body));
       console.log('✏️ Raw req.body:', JSON.stringify(req.body));
-      console.log('✏️ New Preferences:', preferencesData);
 
-      // Verificar si es un array
       if (!Array.isArray(preferencesData)) {
-        console.log('❌ No es un array, intentando extraer...');
         if (preferencesData && preferencesData.preferences) {
           preferencesData = preferencesData.preferences;
         } else {
           return res.status(400).json({
             success: false,
-            message: 'Las preferencias deben ser un array',
-            received: typeof req.body,
-            body: req.body
+            message: 'Las preferencias deben ser un array'
           });
         }
       }
 
-      console.log('✅ Array de preferencias:', preferencesData);
-
-      const validPreferences = [
-        'Deportes', 'Arte', 'Música', 'Lectura', 'Tecnología', 
-        'Naturaleza', 'Voluntariado', 'Gaming', 'Fotografía', 
-        'Cocina', 'Baile', 'Meditación'
-      ];
-
-      // Extraer nombres de las categorías
       const preferenceNames = preferencesData.map(pref => {
         if (typeof pref === 'string') {
           return pref;
@@ -193,8 +168,12 @@ class PreferencesController {
 
       console.log('📝 Nombres extraídos:', preferenceNames);
 
+      const validPreferences = this.getValidPreferences();
       const invalidPreferences = preferenceNames.filter(pref => !validPreferences.includes(pref));
+      
       if (invalidPreferences.length > 0) {
+        console.log('❌ Preferencias inválidas encontradas:', invalidPreferences);
+        console.log('✅ Preferencias válidas:', validPreferences);
         return res.status(400).json({
           success: false,
           message: `Preferencias inválidas: ${invalidPreferences.join(', ')}`,
@@ -202,19 +181,18 @@ class PreferencesController {
         });
       }
 
-      let userPreferences = await UserPreferenceModel.findOne({
+      let userPreferences = await UserPreference.findOne({
         where: { user_id: userId }
       });
 
       if (!userPreferences) {
-        // Si no existen, crear nuevas
-        userPreferences = await UserPreferenceModel.create({
+        userPreferences = await UserPreference.create({
           id: uuidv4(),
           user_id: userId,
           preferences: [...new Set(preferenceNames)]
         });
 
-        console.log('✅ Preferencias creadas (no existían previamente):', userId);
+        console.log('✅ Preferencias creadas (no existían):', userId);
 
         return res.status(201).json({
           success: true,
@@ -223,7 +201,6 @@ class PreferencesController {
         });
       }
 
-      // Actualizar preferencias existentes
       await userPreferences.update({
         preferences: [...new Set(preferenceNames)]
       });
@@ -247,7 +224,7 @@ class PreferencesController {
 
       console.log('🗑️ DeleteUserPreferences - User:', userId);
 
-      const userPreferences = await UserPreferenceModel.findOne({
+      const userPreferences = await UserPreference.findOne({
         where: { user_id: userId }
       });
 
