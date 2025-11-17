@@ -44,7 +44,9 @@ class FriendshipController {
       }
 
       // Verificar que el usuario destinatario existe
-      const addresseeUser = await UserProfileModel.findByPk(friend_id);
+const addresseeUser = await UserProfileModel.findOne({ 
+  where: { user_id: friend_id } 
+})
       if (!addresseeUser) {
         return res.status(404).json({
           success: false,
