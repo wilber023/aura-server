@@ -91,13 +91,16 @@ const addresseeUser = await UserProfileModel.findOne({
       }
 
       // Crear nueva solicitud de amistad
-      const friendship = await FriendshipModel.create({
-        id: uuidv4(),
-        requester_id: requesterId,
-        addressee_id: friend_id,
-        status: 'pending'
-      });
-
+   // Crear nueva solicitud de amistad
+const friendship = await FriendshipModel.create({
+  id: uuidv4(),
+  requester_id: requesterId,
+  addressee_id: friend_id,
+  status: 'pending',
+  requested_at: new Date(),  
+  is_active: true             
+ 
+});
       console.log('✅ Solicitud de amistad enviada:', friendship.id);
 
       // Retornar la solicitud sin información de usuarios por ahora
@@ -153,7 +156,10 @@ const addresseeUser = await UserProfileModel.findOne({
       }
 
       // Aceptar la solicitud
-      await friendship.update({ status: 'accepted' });
+      await friendship.update({ 
+        status: 'accepted',
+        responded_at: new Date()
+       });
 
       console.log('✅ Solicitud de amistad aceptada:', friendshipId);
 
@@ -213,7 +219,10 @@ const addresseeUser = await UserProfileModel.findOne({
       }
 
       // Rechazar la solicitud
-      await friendship.update({ status: 'rejected' });
+      await friendship.update({
+         status: 'rejected',
+         responded_at: new Date()
+         });
 
       console.log('✅ Solicitud de amistad rechazada:', friendshipId);
 
