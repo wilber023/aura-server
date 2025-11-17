@@ -1,5 +1,3 @@
-// FriendshipController.js - VERSIÓN CORREGIDA
-
 const { FriendshipModel, UserProfileModel } = require('../../infrastructure/database/models');
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
@@ -13,11 +11,11 @@ class FriendshipController {
     this.getFriends = this.getFriends.bind(this);
     this.getFriendshipStatus = this.getFriendshipStatus.bind(this);
     this.removeFriend = this.removeFriend.bind(this);
+    this.blockUser = this.blockUser.bind(this);
+    this.unblockUser = this.unblockUser.bind(this);
+    this.getBlockedUsers = this.getBlockedUsers.bind(this);
   }
 
-  /**
-   * Enviar solicitud de amistad
-   */
   async sendFriendRequest(req, res) {
     try {
       const requesterId = req.user.id;
@@ -25,7 +23,6 @@ class FriendshipController {
 
       console.log('📤 SendFriendRequest - From:', requesterId, 'To:', friend_id);
 
-      // Validar campos requeridos
       if (!friend_id) {
         return res.status(400).json({
           success: false,
@@ -33,7 +30,6 @@ class FriendshipController {
         });
       }
 
-      // No se puede enviar solicitud a sí mismo
       if (requesterId === friend_id) {
         return res.status(400).json({
           success: false,
@@ -41,7 +37,6 @@ class FriendshipController {
         });
       }
 
-      // Verificar que el usuario destinatario existe
       const addresseeUser = await UserProfileModel.findOne({ 
         where: { user_id: friend_id } 
       });
@@ -53,7 +48,6 @@ class FriendshipController {
         });
       }
 
-      // ✅ CORREGIDO: Verificar si ya existe una solicitud o amistad
       const existingFriendship = await FriendshipModel.findOne({
         where: {
           [Op.or]: [
@@ -87,7 +81,6 @@ class FriendshipController {
             message = 'No se puede enviar solicitud a este usuario';
             break;
           case 'rejected':
-            // Permitir reenviar si fue rechazada hace más de 30 días
             const daysSinceRejection = Math.floor(
               (new Date() - new Date(existingFriendship.responded_at)) / (1000 * 60 * 60 * 24)
             );
@@ -95,9 +88,8 @@ class FriendshipController {
             if (daysSinceRejection < 30) {
               message = `Solicitud previamente rechazada. Puedes reintentar en ${30 - daysSinceRejection} días.`;
             } else {
-              // Eliminar la solicitud rechazada antigua y permitir nueva
               await existingFriendship.destroy();
-              console.log('🔄 Solicitud rechazada antigua eliminada, permitiendo nueva');
+              console.log('🔄 Solicitud rechazada antigua eliminada');
               break;
             }
             break;
@@ -112,7 +104,6 @@ class FriendshipController {
         }
       }
 
-      // ✅ Crear nueva solicitud de amistad
       const friendship = await FriendshipModel.create({
         id: uuidv4(),
         requester_id: requesterId,
@@ -142,9 +133,6 @@ class FriendshipController {
     }
   }
 
-  /**
-   * Aceptar solicitud de amistad
-   */
   async acceptFriendRequest(req, res) {
     try {
       const { friendshipId } = req.params;
@@ -161,7 +149,6 @@ class FriendshipController {
         });
       }
 
-      // Solo el destinatario puede aceptar la solicitud
       if (friendship.addressee_id !== userId) {
         return res.status(403).json({
           success: false,
@@ -169,7 +156,6 @@ class FriendshipController {
         });
       }
 
-      // Verificar que esté pendiente
       if (friendship.status !== 'pending') {
         return res.status(400).json({
           success: false,
@@ -177,7 +163,6 @@ class FriendshipController {
         });
       }
 
-      // Aceptar la solicitud
       await friendship.update({ 
         status: 'accepted',
         responded_at: new Date()
@@ -205,9 +190,6 @@ class FriendshipController {
     }
   }
 
-  /**
-   * Rechazar solicitud de amistad
-   */
   async rejectFriendRequest(req, res) {
     try {
       const { friendshipId } = req.params;
@@ -224,7 +206,6 @@ class FriendshipController {
         });
       }
 
-      // Solo el destinatario puede rechazar la solicitud
       if (friendship.addressee_id !== userId) {
         return res.status(403).json({
           success: false,
@@ -232,7 +213,6 @@ class FriendshipController {
         });
       }
 
-      // Verificar que esté pendiente
       if (friendship.status !== 'pending') {
         return res.status(400).json({
           success: false,
@@ -240,7 +220,6 @@ class FriendshipController {
         });
       }
 
-      // Rechazar la solicitud
       await friendship.update({
         status: 'rejected',
         responded_at: new Date()
@@ -258,9 +237,6 @@ class FriendshipController {
     }
   }
 
-  /**
-   * Obtener solicitudes de amistad pendientes
-   */
   async getFriendRequests(req, res) {
     try {
       const userId = req.user.id;
@@ -302,9 +278,6 @@ class FriendshipController {
     }
   }
 
-  /**
-   * Obtener lista de amigos
-   */
   async getFriends(req, res) {
     try {
       const userId = req.user.id;
@@ -360,9 +333,6 @@ class FriendshipController {
     }
   }
 
-  /**
-   * Verificar estado de amistad con un usuario
-   */
   async getFriendshipStatus(req, res) {
     try {
       const userId = req.user.id;
@@ -443,9 +413,6 @@ class FriendshipController {
     }
   }
 
-  /**
-   * Eliminar amigo / Cancelar solicitud
-   */
   async removeFriend(req, res) {
     try {
       const { friendshipId } = req.params;
@@ -462,7 +429,6 @@ class FriendshipController {
         });
       }
 
-      // Verificar que el usuario sea parte de la amistad
       if (friendship.requester_id !== userId && friendship.addressee_id !== userId) {
         return res.status(403).json({
           success: false,
@@ -477,6 +443,119 @@ class FriendshipController {
       res.status(200).json({
         success: true,
         message: 'Amistad eliminada exitosamente'
+      });
+
+    } catch (error) {
+      this._handleError(res, error);
+    }
+  }
+
+  async blockUser(req, res) {
+    try {
+      const userId = req.user.id;
+      const { blocked_id } = req.body;
+
+      console.log('🚫 BlockUser - User:', userId, 'Target:', blocked_id);
+
+      if (userId === blocked_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'No puedes bloquearte a ti mismo'
+        });
+      }
+
+      let friendship = await FriendshipModel.findOne({
+        where: {
+          [Op.or]: [
+            { requester_id: userId, addressee_id: blocked_id },
+            { requester_id: blocked_id, addressee_id: userId }
+          ]
+        }
+      });
+
+      if (friendship) {
+        await friendship.update({ 
+          status: 'blocked',
+          requester_id: userId,
+          addressee_id: blocked_id
+        });
+      } else {
+        friendship = await FriendshipModel.create({
+          id: uuidv4(),
+          requester_id: userId,
+          addressee_id: blocked_id,
+          status: 'blocked',
+          requested_at: new Date(),
+          is_active: true
+        });
+      }
+
+      console.log('✅ Usuario bloqueado:', blocked_id);
+
+      res.status(200).json({
+        success: true,
+        message: 'Usuario bloqueado exitosamente'
+      });
+
+    } catch (error) {
+      this._handleError(res, error);
+    }
+  }
+
+  async unblockUser(req, res) {
+    try {
+      const userId = req.user.id;
+      const { userId: targetUserId } = req.params;
+
+      console.log('✅ UnblockUser - User:', userId, 'Target:', targetUserId);
+
+      const friendship = await FriendshipModel.findOne({
+        where: {
+          requester_id: userId,
+          addressee_id: targetUserId,
+          status: 'blocked'
+        }
+      });
+
+      if (!friendship) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no está bloqueado'
+        });
+      }
+
+      await friendship.destroy();
+
+      console.log('✅ Usuario desbloqueado:', targetUserId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Usuario desbloqueado exitosamente'
+      });
+
+    } catch (error) {
+      this._handleError(res, error);
+    }
+  }
+
+  async getBlockedUsers(req, res) {
+    try {
+      const userId = req.user.id;
+
+      console.log('🚫 GetBlockedUsers - User:', userId);
+
+      const blockedUsers = await FriendshipModel.findAll({
+        where: {
+          requester_id: userId,
+          status: 'blocked'
+        },
+        order: [['created_at', 'DESC']]
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Usuarios bloqueados obtenidos exitosamente',
+        data: blockedUsers
       });
 
     } catch (error) {
