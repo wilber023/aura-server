@@ -9,16 +9,6 @@ class AvailableUsersController {
     this.getAvailableUsers = this.getAvailableUsers.bind(this);
   }
 
-  /**
-   * 📋 Obtiene usuarios disponibles (NO amigos del usuario actual)
-   * 
-   * Endpoint: GET /api/v1/users/available
-   * Query params:
-   *   - page: número de página (default: 1)
-   *   - limit: elementos por página (default: 20)
-   *   - q: búsqueda por nombre/email (opcional)
-   *   - excludeUserId: ID del usuario a excluir (opcional, se usa el token si no se proporciona)
-   */
   async getAvailableUsers(req, res) {
     try {
       const currentUserId = req.user.id; // Del token JWT

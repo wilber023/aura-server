@@ -2,6 +2,7 @@
 const { CommunityModel, CommunityMemberModel, UserProfileModel } = require('../../infrastructure/database/models');
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
+const axios = require('axios'); // ✅ Agregar axios
 
 class CommunityController {
   constructor() {
@@ -15,6 +16,9 @@ class CommunityController {
     this.getCommunityMembers = this.getCommunityMembers.bind(this);
     this.getUserCommunities = this.getUserCommunities.bind(this);
     this.searchCommunities = this.searchCommunities.bind(this);
+    
+    // ✅ URL del servicio de mensajería
+    this.messagingServiceUrl = process.env.MESSAGING_SERVICE_URL || 'http://44.209.166.59/api/v1';
   }
 
   async getAllCommunities(req, res) {
@@ -160,7 +164,6 @@ class CommunityController {
       // ✅ Procesar imagen de Cloudinary
       let communityImageUrl = null;
       if (req.file) {
-        // Cloudinary devuelve la URL en req.file.path
         communityImageUrl = req.file.path;
         console.log('✅ Imagen de comunidad guardada en Cloudinary:', communityImageUrl);
       }
@@ -202,6 +205,30 @@ class CommunityController {
       });
 
       console.log('✅ Comunidad creada exitosamente:', community.id);
+
+      // ✅ SINCRONIZAR: Crear grupo de chat en servicio de mensajería
+      try {
+        console.log('📡 Creando grupo de chat en servicio de mensajería...');
+        await axios.post(`${this.messagingServiceUrl}/groups`, {
+          externalId: community.id,
+          name: community.name,
+          description: community.description,
+          imageUrl: communityImageUrl,
+          groupType: 'community',
+          creatorProfileId: creatorId,
+          maxMembers: 10000,
+          isPublic: true
+        }, {
+          headers: {
+            'Authorization': req.headers.authorization,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('✅ Grupo de chat creado exitosamente');
+      } catch (error) {
+        console.error('⚠️ Error creando grupo de chat:', error.response?.data || error.message);
+        // No fallar la creación de comunidad si falla el chat
+      }
 
       // Obtener la comunidad completa con relaciones
       const createdCommunity = await CommunityModel.findByPk(community.id, {
@@ -369,6 +396,23 @@ class CommunityController {
 
       await community.increment('members_count');
 
+      // ✅ SINCRONIZAR: Agregar miembro al grupo de chat
+      try {
+        console.log('📡 Agregando miembro al grupo de chat...');
+        await axios.post(`${this.messagingServiceUrl}/group-members/${id}/sync-add`, {
+          profileId: userId,
+          status: 'active'
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('✅ Miembro agregado al grupo de chat exitosamente');
+      } catch (error) {
+        console.error('⚠️ Error agregando miembro al chat:', error.response?.data || error.message);
+        // No fallar el join si falla la sincronización
+      }
+
       res.status(200).json({
         success: true,
         message: 'Te has unido a la comunidad exitosamente'
@@ -414,6 +458,20 @@ class CommunityController {
 
       await membership.destroy();
       await community.decrement('members_count');
+
+      // ✅ SINCRONIZAR: Remover miembro del grupo de chat
+      try {
+        console.log('📡 Removiendo miembro del grupo de chat...');
+        await axios.delete(`${this.messagingServiceUrl}/group-members/${id}/sync-remove/${userId}`, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('✅ Miembro removido del grupo de chat exitosamente');
+      } catch (error) {
+        console.error('⚠️ Error removiendo miembro del chat:', error.response?.data || error.message);
+        // No fallar el leave si falla la sincronización
+      }
 
       res.status(200).json({
         success: true,
