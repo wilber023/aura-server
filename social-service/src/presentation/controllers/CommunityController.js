@@ -17,7 +17,7 @@ class CommunityController {
     this.getUserCommunities = this.getUserCommunities.bind(this);
     this.searchCommunities = this.searchCommunities.bind(this);
     
-    this.messagingServiceUrl = process.env.MESSAGING_SERVICE_URL || 'http://44.209.166.59/api/v1';
+    this.messagingServiceUrl = process.env.MESSAGING_SERVICE_URL || 'http://3.233.111.80/api/v1';
     console.log('🔧 CommunityController - Messaging URL:', this.messagingServiceUrl);
   }
 
@@ -215,7 +215,7 @@ class CommunityController {
         console.log('🌐 Messaging URL:', messagingUrl);
         
         console.log('📤 Creando grupo...');
-        const groupResponse = await axios.post(`${messagingUrl}/groups`, {
+        const groupResponse = await axios.post(`${messagingUrl}/groups/sync`, {
           externalId: community.id,
           name: community.name,
           description: community.description,
