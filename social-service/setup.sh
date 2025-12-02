@@ -1,93 +1,193 @@
 #!/bin/bash
 
 # =================================================================
-# Script de Configuración Automática para Social Service
+# Setup Script for Social Service
 #
-# Este script automatiza los siguientes pasos:
-# 1. Verifica la instalación y el estado de MySQL.
-# 2. Crea la base de datos y el usuario necesarios.
-# 3. Instala las dependencias del proyecto (npm).
-# 4. Ejecuta las migraciones de la base de datos.
-# 5. Inicia la aplicación en modo de desarrollo.
+# This script prepares the environment for running the social service:
+# 1. Verifies Node.js and npm installation
+# 2. Verifies MySQL/MariaDB installation and status
+# 3. Creates database and user
+# 4. Installs npm dependencies
+# 5. Runs database migrations
+# 
+# After successful execution, you can run: npm run dev
 # =================================================================
 
-# --- Colores para una salida más clara ---
+# --- Colors for better output ---
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🚀 Iniciando la configuración del entorno para Social Service...${NC}\n"
+echo -e "${BLUE}🚀 Social Service Setup${NC}\n"
 
-# --- PASO 1: VERIFICAR MYSQL ---
-echo -e "${YELLOW}Paso 1: Verificando instalación y estado de MySQL/MariaDB...${NC}"
+# --- STEP 1: VERIFY NODE.JS AND NPM ---
+echo -e "${YELLOW}Step 1: Verifying Node.js and npm...${NC}"
 
-# Verificar si el comando mysql está disponible
+if ! command -v node &> /dev/null; then
+    echo -e "${RED}❌ Error: Node.js is not installed.${NC}"
+    echo "Please install Node.js v16 or higher from https://nodejs.org/"
+    exit 1
+fi
+
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}❌ Error: npm is not installed.${NC}"
+    echo "Please install npm (usually comes with Node.js)"
+    exit 1
+fi
+
+NODE_VERSION=$(node --version)
+NPM_VERSION=$(npm --version)
+echo -e "${GREEN}✅ Node.js ${NODE_VERSION} installed${NC}"
+echo -e "${GREEN}✅ npm ${NPM_VERSION} installed${NC}"
+echo ""
+
+# --- STEP 2: VERIFY MYSQL/MARIADB ---
+echo -e "${YELLOW}Step 2: Verifying MySQL/MariaDB installation...${NC}"
+
 if ! command -v mysql &> /dev/null; then
-    echo "MySQL/MariaDB Server no está instalado. Instalando..."
-    sudo apt-get update
-    sudo apt-get install -y mariadb-server mariadb-client
-    if ! command -v mysql &> /dev/null; then
-        echo -e "${RED}❌ Error: No se pudo instalar MySQL/MariaDB Server. Por favor, instálalo manualmente e inténtalo de nuevo.${NC}"
+    echo -e "${RED}❌ Error: MySQL/MariaDB client is not installed.${NC}"
+    echo "Installing MySQL/MariaDB Server..."
+    
+    # Try to install on Debian/Ubuntu systems
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update
+        sudo apt-get install -y mariadb-server mariadb-client
+    # Try to install on RedHat/CentOS systems
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y mariadb-server mariadb
+    # Try to install on macOS
+    elif command -v brew &> /dev/null; then
+        brew install mysql
+    else
+        echo -e "${RED}❌ Could not auto-install MySQL/MariaDB.${NC}"
+        echo "Please install it manually and run this script again."
         exit 1
     fi
-    echo -e "${GREEN}✅ MySQL/MariaDB Server instalado correctamente.${NC}"
+    
+    if ! command -v mysql &> /dev/null; then
+        echo -e "${RED}❌ Error: Failed to install MySQL/MariaDB.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ MySQL/MariaDB Server installed successfully.${NC}"
 else
-    echo -e "${GREEN}✅ MySQL/MariaDB Server ya está instalado.${NC}"
+    echo -e "${GREEN}✅ MySQL/MariaDB client is installed.${NC}"
 fi
 
-# Verificar si el servicio MySQL está activo (usando systemctl, el más común)
+# Verify MySQL service is running
 if command -v systemctl &> /dev/null; then
-    if ! systemctl is-active --quiet mariadb; then # Usar 'mariadb' como nombre de servicio
-        echo "El servicio de MySQL/MariaDB no está activo. Se necesita permiso de superusuario para iniciarlo."
-        sudo systemctl start mariadb # Usar 'mariadb' como nombre de servicio
-        if ! systemctl is-active --quiet mariadb; then # Usar 'mariadb' como nombre de servicio
-            echo -e "${RED}❌ Error: No se pudo iniciar el servicio de MySQL/MariaDB. Por favor, inícialo manualmente e inténtalo de nuevo.${NC}"
-            exit 1
-        fi
-        echo -e "${GREEN}✅ Servicio de MySQL/MariaDB iniciado correctamente.${NC}"
+    # Try mariadb first, then mysql
+    if systemctl list-units --type=service | grep -q mariadb; then
+        SERVICE_NAME="mariadb"
+    elif systemctl list-units --type=service | grep -q mysql; then
+        SERVICE_NAME="mysql"
     else
-        echo -e "${GREEN}✅ El servicio de MySQL/MariaDB ya está en ejecución.${NC}"
+        echo -e "${YELLOW}⚠️ Warning: Could not find MySQL/MariaDB service.${NC}"
+        echo "Please ensure MySQL/MariaDB is running before continuing."
+        SERVICE_NAME=""
+    fi
+    
+    if [ -n "$SERVICE_NAME" ]; then
+        if ! systemctl is-active --quiet $SERVICE_NAME; then
+            echo "Starting $SERVICE_NAME service..."
+            sudo systemctl start $SERVICE_NAME
+            if ! systemctl is-active --quiet $SERVICE_NAME; then
+                echo -e "${RED}❌ Error: Could not start $SERVICE_NAME service.${NC}"
+                echo "Please start it manually and run this script again."
+                exit 1
+            fi
+            echo -e "${GREEN}✅ $SERVICE_NAME service started successfully.${NC}"
+        else
+            echo -e "${GREEN}✅ $SERVICE_NAME service is running.${NC}"
+        fi
+    fi
+elif command -v service &> /dev/null; then
+    # Fallback to service command
+    if service mysql status &> /dev/null || service mariadb status &> /dev/null; then
+        echo -e "${GREEN}✅ MySQL/MariaDB service is running.${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Warning: Could not verify MySQL/MariaDB status.${NC}"
+        echo "Please ensure it is running before continuing."
     fi
 else
-    echo -e "${YELLOW}Aviso: No se encontró 'systemctl'. Se omite la verificación del estado del servicio MySQL/MariaDB. Asegúrate de que esté corriendo.${NC}"
+    echo -e "${YELLOW}⚠️ Warning: Could not check MySQL/MariaDB service status.${NC}"
+    echo "Please ensure it is running before continuing."
 fi
 echo ""
 
-# --- PASO 2: CONFIGURAR BASE DE DATOS Y USUARIO ---
-echo -e "${YELLOW}Paso 2: Creando la base de datos y el usuario...${NC}"
-echo "Se te pedirá la contraseña de 'root' de MySQL para continuar."
+# --- STEP 3: SETUP DATABASE AND USER ---
+echo -e "${YELLOW}Step 3: Creating database and user...${NC}"
+echo "You will be prompted for MySQL root password."
 
-if sudo mysql -u root < database-setup.sql; then
-    echo -e "${GREEN}✅ Base de datos 'posts_dev_db' y usuario 'posts_user' creados con éxito.${NC}"
+if [ -f "scripts/database-setup.sql" ]; then
+    if sudo mysql -u root < scripts/database-setup.sql 2>/dev/null; then
+        echo -e "${GREEN}✅ Database 'posts_dev_db' and user 'posts_user' created successfully.${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Database setup completed with warnings (user/database may already exist).${NC}"
+    fi
 else
-    echo -e "${RED}❌ Error al ejecutar 'database-setup.sql'. Verifica la contraseña de root o si el usuario ya existe con una contraseña diferente.${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️ Warning: scripts/database-setup.sql not found. Skipping database setup.${NC}"
+    echo "You may need to create the database manually."
 fi
 echo ""
 
-# --- PASO 3: INSTALAR DEPENDENCIAS ---
-echo -e "${YELLOW}Paso 3: Instalando dependencias del proyecto con npm...${NC}"
+# --- STEP 4: INSTALL DEPENDENCIES ---
+echo -e "${YELLOW}Step 4: Installing npm dependencies...${NC}"
+
 if npm install; then
-    echo -e "${GREEN}✅ Dependencias instaladas correctamente.${NC}"
+    echo -e "${GREEN}✅ Dependencies installed successfully.${NC}"
 else
-    echo -e "${RED}❌ Error durante 'npm install'. Verifica tu conexión a internet y la configuración de npm.${NC}"
+    echo -e "${RED}❌ Error: Failed to install dependencies.${NC}"
+    echo "Please check your internet connection and npm configuration."
     exit 1
 fi
 echo ""
 
-# --- PASO 4: EJECUTAR MIGRACIONES ---
-echo -e "${YELLOW}Paso 4: Ejecutando migraciones de la base de datos...${NC}"
+# --- STEP 5: RUN MIGRATIONS ---
+echo -e "${YELLOW}Step 5: Running database migrations...${NC}"
+
 if npm run migrate:up; then
-    echo -e "${GREEN}✅ Migraciones ejecutadas con éxito. Las tablas han sido creadas.${NC}"
+    echo -e "${GREEN}✅ Migrations executed successfully. Tables have been created.${NC}"
 else
-    echo -e "${RED}❌ Error al ejecutar las migraciones. Revisa los logs para más detalles.${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️ Warning: Migration errors occurred.${NC}"
+    echo "This might be normal if migrations have already been run."
+    echo "Check the output above for details."
 fi
 echo ""
 
-# --- PASO 5: INICIAR LA APLICACIÓN ---
-echo -e "${YELLOW}Paso 5: Iniciando la aplicación en modo desarrollo...${NC}"
-echo -e "${GREEN}🎉 ¡Configuración completada! El servidor se está iniciando.${NC}"
-npm run dev
+# --- STEP 6: RUN ADDITIONAL SETUP SCRIPTS (if needed) ---
+echo -e "${YELLOW}Step 6: Running additional setup scripts...${NC}"
+
+if [ -f "scripts/migrations/add-missing-columns.js" ]; then
+    echo "Adding missing columns to user_profiles table..."
+    if node scripts/migrations/add-missing-columns.js; then
+        echo -e "${GREEN}✅ Missing columns added successfully.${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Warning: Could not add missing columns (may already exist).${NC}"
+    fi
+else
+    echo "ℹ️ No additional column migrations needed."
+fi
+echo ""
+
+# --- COMPLETION ---
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}🎉 Setup completed successfully!${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "${BLUE}📝 Next steps:${NC}"
+echo -e "  1. Review your .env file and update configuration if needed"
+echo -e "  2. Start the development server with: ${GREEN}npm run dev${NC}"
+echo ""
+echo -e "${BLUE}📚 Documentation:${NC}"
+echo -e "  • API Documentation: docs/API_DOCUMENTATION.md"
+echo -e "  • DDD Structure: docs/ESTRUCTURA_DDD.md"
+echo -e "  • Profile Upload: docs/PROFILE_UPLOAD_IMPLEMENTATION.md"
+echo ""
+echo -e "${BLUE}🛠️ Available npm scripts:${NC}"
+echo -e "  • ${GREEN}npm run dev${NC}        - Start development server"
+echo -e "  • ${GREEN}npm start${NC}          - Start production server"
+echo -e "  • ${GREEN}npm test${NC}           - Run tests"
+echo -e "  • ${GREEN}npm run migrate:up${NC} - Run migrations"
+echo ""
